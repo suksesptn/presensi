@@ -19,7 +19,7 @@
 
   <div class="card">
     <div class="header-p">
-      <h5 class="m-0">Presensi Tambahan Sore</h5>
+      <h5 class="m-0">Presensi Tambahan</h5>
       <small>SMA PU Albayan</small>
     </div>
     
@@ -63,12 +63,11 @@
       
       <datalist id="list-siswa"></datalist>
 
-      <button class="btn btn-success w-100 mt-4 py-2" onclick="kirimData()" id="btnSubmit">SIM ঐতিহ্য PRESENSI</button>
+      <button class="btn btn-success w-100 mt-4 py-2" onclick="kirimData()" id="btnSubmit">SIMPAN PRESENSI</button>
     </div>
   </div>
 
   <script>
-    // URL Apps Script Anda sudah ditambahkan di bawah ini
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxKjak3zPXG5Dnv4esdTKnZeyOrzvtqimv1jYDh2bcHua6abs-Q64MaTrSVAV34mfWR/exec";
 
     document.getElementById('tanggal').valueAsDate = new Date();
@@ -86,4 +85,69 @@
           data.guru.forEach(g => { gList.innerHTML += `<option value="${g}">`; });
         }
       })
-      .catch(error => console.error('Gagal mengambil
+      .catch(error => console.error('Gagal mengambil data dropdown:', error));
+
+    function tambahBaris() {
+      const container = document.getElementById('container-siswa');
+      const div = document.createElement('div');
+      div.className = 'siswa-row';
+      div.innerHTML = `
+        <input list="list-siswa" class="form-control input-siswa" placeholder="Nama siswa...">
+        <button class="btn btn-danger btn-sm btn-remove" onclick="this.parentElement.remove()">✕</button>
+      `;
+      container.appendChild(div);
+    }
+
+    function kirimData() {
+      const tanggal = document.getElementById('tanggal').value;
+      const guru = document.getElementById('guru').value.trim();
+      const kegiatan = document.getElementById('kegiatan').value.trim();
+      const jp = document.getElementById('jp').value;
+
+      if(!tanggal || !guru || !kegiatan || !jp) {
+        alert("Mohon lengkapi semua isian (Tanggal, Nama Guru, Kegiatan, dan JP)!");
+        return;
+      }
+
+      const siswas = Array.from(document.querySelectorAll('.input-siswa'))
+                          .map(input => input.value.trim())
+                          .filter(val => val !== "");
+
+      if (siswas.length === 0) {
+        alert("Mohon isi minimal satu nama siswa.");
+        return;
+      }
+
+      const btn = document.getElementById('btnSubmit');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Menyimpan...';
+
+      const payload = { tanggal, guru, kegiatan, jp, siswa: siswas };
+
+      fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8', 
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(response => response.json())
+      .then(result => {
+        if(result.status === "success") {
+          alert(result.message);
+          location.reload(); 
+        } else {
+          alert("Gagal menyimpan: " + result.message);
+          btn.disabled = false;
+          btn.innerText = "SIMPAN PRESENSI";
+        }
+      })
+      .catch(error => {
+        alert("Terjadi kesalahan jaringan atau CORS: " + error);
+        btn.disabled = false;
+        btn.innerText = "SIMPAN PRESENSI";
+      });
+    }
+  </script>
+</body>
+</html>
