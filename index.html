@@ -31,8 +31,9 @@
 
       <div class="mb-3">
         <label>Nama Lengkap Guru + Gelar <span class="text-danger">*</span></label>
-        <input list="list-guru" id="guru" class="form-control" placeholder="Pilih atau ketik nama beserta gelar..." required>
-        <datalist id="list-guru"></datalist>
+        <select id="guru" class="form-select" required>
+          <option value="" disabled selected>Memuat daftar guru...</option>
+        </select>
       </div>
 
       <div class="mb-3">
@@ -68,27 +69,33 @@
 
   <script>
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhBQQXxLtCLbQ61IuQZMDq0SIYCGJ5zDQYQRPQU989jRO8pz9XPHCg9xFSdMRY4AOj/exec";
-    
-    // Variabel global untuk menyimpan daftar guru dari Google Sheet
-    let daftarGuru = [];
 
     document.getElementById('tanggal').valueAsDate = new Date();
 
     fetch(APPS_SCRIPT_URL)
       .then(response => response.json())
       .then(data => {
+        // Mengisi datalist siswa
         const sList = document.getElementById('list-siswa');
         if(data.siswa) {
           data.siswa.forEach(s => { sList.innerHTML += `<option value="${s}">`; });
         }
         
-        const gList = document.getElementById('list-guru');
+        // Mengisi select dropdown guru
+        const guruSelect = document.getElementById('guru');
         if(data.guru) {
-          daftarGuru = data.guru; // Simpan data guru ke variabel global
-          data.guru.forEach(g => { gList.innerHTML += `<option value="${g}">`; });
+          guruSelect.innerHTML = '<option value="" disabled selected>Pilih nama guru dari daftar...</option>'; // Reset teks opsi pertama
+          data.guru.forEach(g => { 
+            guruSelect.innerHTML += `<option value="${g}">${g}</option>`; 
+          });
+        } else {
+          guruSelect.innerHTML = '<option value="" disabled selected>Gagal memuat daftar guru</option>';
         }
       })
-      .catch(error => console.error('Gagal mengambil data dropdown:', error));
+      .catch(error => {
+        console.error('Gagal mengambil data dropdown:', error);
+        document.getElementById('guru').innerHTML = '<option value="" disabled selected>Gagal memuat koneksi</option>';
+      });
 
     function tambahBaris() {
       const container = document.getElementById('container-siswa');
@@ -103,19 +110,13 @@
 
     function kirimData() {
       const tanggal = document.getElementById('tanggal').value;
-      const guru = document.getElementById('guru').value.trim();
+      const guru = document.getElementById('guru').value; // Ambil value dari select
       const kegiatan = document.getElementById('kegiatan').value.trim();
       const jp = document.getElementById('jp').value;
 
       if(!tanggal || !guru || !kegiatan || !jp) {
         alert("Mohon lengkapi semua isian (Tanggal, Nama Guru, Kegiatan, dan JP)!");
         return;
-      }
-
-      // Validasi: Cek apakah nama guru yang diinput ada di dalam Master_Guru
-      if (!daftarGuru.includes(guru)) {
-        alert("Nama guru tidak valid! Silakan pilih nama dari daftar yang muncul saat Anda mengetik, jangan membuat nama sendiri.");
-        return; 
       }
 
       const siswas = Array.from(document.querySelectorAll('.input-siswa'))
