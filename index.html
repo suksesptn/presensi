@@ -68,6 +68,9 @@
 
   <script>
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhBQQXxLtCLbQ61IuQZMDq0SIYCGJ5zDQYQRPQU989jRO8pz9XPHCg9xFSdMRY4AOj/exec";
+    
+    // Variabel global untuk menyimpan daftar guru dari Google Sheet
+    let daftarGuru = [];
 
     document.getElementById('tanggal').valueAsDate = new Date();
 
@@ -81,6 +84,7 @@
         
         const gList = document.getElementById('list-guru');
         if(data.guru) {
+          daftarGuru = data.guru; // Simpan data guru ke variabel global
           data.guru.forEach(g => { gList.innerHTML += `<option value="${g}">`; });
         }
       })
@@ -106,6 +110,12 @@
       if(!tanggal || !guru || !kegiatan || !jp) {
         alert("Mohon lengkapi semua isian (Tanggal, Nama Guru, Kegiatan, dan JP)!");
         return;
+      }
+
+      // Validasi: Cek apakah nama guru yang diinput ada di dalam Master_Guru
+      if (!daftarGuru.includes(guru)) {
+        alert("Nama guru tidak valid! Silakan pilih nama dari daftar yang muncul saat Anda mengetik, jangan membuat nama sendiri.");
+        return; 
       }
 
       const siswas = Array.from(document.querySelectorAll('.input-siswa'))
