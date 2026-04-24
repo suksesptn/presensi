@@ -38,12 +38,11 @@
 
       <div class="mb-3">
         <label>Jenis Kegiatan <span class="text-danger">*</span></label>
-        <input list="list-kegiatan" id="kegiatan" class="form-control" placeholder="Pilih atau ketik jenis tambahan..." required>
-        <datalist id="list-kegiatan">
-          <option value="UJIAN MANDIRI">
-          <option value="Tambahan Sore">
-          <option value="Tambahan Malam">
-        </datalist>
+        <select id="kegiatan" class="form-select" required>
+          <option value="" disabled selected>Pilih jenis kegiatan...</option>
+          <option value="UJIAN MANDIRI">UJIAN MANDIRI</option>
+          <option value="Tambahan Sore/Malam">Tambahan Sore/Malam</option>
+        </select>
       </div>
 
       <div class="mb-3">
@@ -75,7 +74,7 @@
     fetch(APPS_SCRIPT_URL)
       .then(response => response.json())
       .then(data => {
-        // Mengisi datalist siswa
+        // Mengisi datalist siswa (siswa tetap bisa diketik untuk memudahkan pencarian)
         const sList = document.getElementById('list-siswa');
         if(data.siswa) {
           data.siswa.forEach(s => { sList.innerHTML += `<option value="${s}">`; });
@@ -84,7 +83,7 @@
         // Mengisi select dropdown guru
         const guruSelect = document.getElementById('guru');
         if(data.guru) {
-          guruSelect.innerHTML = '<option value="" disabled selected>Pilih nama guru dari daftar...</option>'; // Reset teks opsi pertama
+          guruSelect.innerHTML = '<option value="" disabled selected>Pilih nama guru dari daftar...</option>';
           data.guru.forEach(g => { 
             guruSelect.innerHTML += `<option value="${g}">${g}</option>`; 
           });
@@ -110,8 +109,8 @@
 
     function kirimData() {
       const tanggal = document.getElementById('tanggal').value;
-      const guru = document.getElementById('guru').value; // Ambil value dari select
-      const kegiatan = document.getElementById('kegiatan').value.trim();
+      const guru = document.getElementById('guru').value; 
+      const kegiatan = document.getElementById('kegiatan').value; 
       const jp = document.getElementById('jp').value;
 
       if(!tanggal || !guru || !kegiatan || !jp) {
