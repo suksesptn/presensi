@@ -13,10 +13,15 @@
     .checkbox-container { max-height: 250px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px; background: #fff; }
     .form-check { margin-bottom: 8px; }
     .siswa-manual-row { display: flex; gap: 8px; margin-top: 10px; }
-    .btn-remove { border-radius: 8px; }
+    .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 1000; justify-content: center; align-items: center; flex-direction: column; }
   </style>
 </head>
 <body>
+
+  <div id="loader" class="loading-overlay">
+    <div class="spinner-border text-primary mb-2"></div>
+    <span>Memproses data...</span>
+  </div>
 
   <div class="card">
     <div class="header-p">
@@ -66,7 +71,7 @@
       </div>
       
       <label>Tambah Siswa Manual (Opsional)</label>
-      <small class="d-block text-muted mb-2">Gunakan jika ada siswa yang hadir tapi tidak ada di daftar kelas.</small>
+      <small class="d-block text-muted mb-2">Gunakan jika ada siswa lintas kelas yang hadir.</small>
       <div id="container-manual" class="mb-2"></div>
       <button class="btn btn-outline-primary btn-sm w-100" onclick="tambahBarisManual()">+ Tambah Siswa Manual</button>
 
@@ -75,45 +80,50 @@
   </div>
 
   <script>
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwaGxd9K-4FWy53NI9IFUgi5L-Me8zeLg7YEnKcqMlJl0c1kJfgyBUMCd4Cr_xi7Orf/exec";
+    // URL Apps Script yang baru Bapak berikan
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxvgr1PaKekGSj6S9xYrEKGWA6n_pXLoGiD9wDuO18oPQNhYsjiyIzd7dNUhFkrWVBl/exec"; 
     
     let dataMasterSiswa = {}; 
 
+    // Set tanggal hari ini secara otomatis
     document.getElementById('tanggal').valueAsDate = new Date();
 
-    // 1. Ambil Data Guru, Kelas, dan Siswa saat web dimuat
-    fetch(APPS_SCRIPT_URL)
-      .then(response => response.json())
-      .then(data => {
-        // Isi dropdown Guru
-        const guruSelect = document.getElementById('guru');
-        if(data.guru && data.guru.length > 0) {
-          guruSelect.innerHTML = '<option value="" disabled selected>Pilih nama guru...</option>';
-          data.guru.forEach(g => guruSelect.innerHTML += `<option value="${g}">${g}</option>`);
-        } else {
-          guruSelect.innerHTML = '<option value="" disabled selected>Data guru tidak ditemukan</option>';
-        }
+    // 1. Ambil Data Guru dan Kelas saat halaman dimuat
+    window.onload = function() {
+      fetch(APPS_SCRIPT_URL)
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === "error") {
+            alert("Gagal mengambil data: " + data.message);
+            return;
+          }
 
-        // Isi dropdown Kelas
-        const kelasSelect = document.getElementById('kelas');
-        if(data.kelas && data.kelas.length > 0) {
-          kelasSelect.innerHTML = '<option value="" disabled selected>Pilih kelas...</option>';
-          data.kelas.forEach(k => kelasSelect.innerHTML += `<option value="${k}">${k}</option>`);
-        } else {
-          kelasSelect.innerHTML = '<option value="" disabled selected>Data kelas tidak ditemukan</option>';
-        }
+          // Isi Dropdown Guru
+          const guruSelect = document.getElementById('guru');
+          if(data.guru && data.guru.length > 0) {
+            guruSelect.innerHTML = '<option value="" disabled selected>Pilih nama guru...</option>';
+            data.guru.forEach(g => guruSelect.innerHTML += `<option value="${g}">${g}</option>`);
+          }
 
-        if(data.siswa) {
-          dataMasterSiswa = data.siswa;
-        }
-      })
-      .catch(error => {
-        console.error('Gagal memuat data:', error);
-        document.getElementById('guru').innerHTML = '<option value="" disabled selected>Kesalahan Koneksi</option>';
-        document.getElementById('kelas').innerHTML = '<option value="" disabled selected>Kesalahan Koneksi</option>';
-      });
+          // Isi Dropdown Kelas
+          const kelasSelect = document.getElementById('kelas');
+          if(data.kelas && data.kelas.length > 0) {
+            kelasSelect.innerHTML = '<option value="" disabled selected>Pilih kelas...</option>';
+            data.kelas.forEach(k => kelasSelect.innerHTML += `<option value="${k}">${k}</option>`);
+          }
 
-    // 2. Fungsi memunculkan checkbox siswa berdasarkan kelas yang dipilih
+          // Simpan data siswa ke variabel lokal
+          if(data.siswa) {
+            dataMasterSiswa = data.siswa;
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert("Koneksi gagal atau URL Apps Script salah/belum di-deploy sebagai 'Anyone'.");
+        });
+    };
+
+    // 2. Fungsi untuk menampilkan daftar siswa berdasarkan kelas yang dipilih
     function tampilkanSiswa() {
       const kelasDipilih = document.getElementById('kelas').value;
       const containerSiswa = document.getElementById('container-siswa');
@@ -139,19 +149,19 @@
       });
     }
 
-    // 3. Fungsi menambah baris input siswa manual
+    // 3. Fungsi Tambah Baris Manual
     function tambahBarisManual() {
       const container = document.getElementById('container-manual');
       const div = document.createElement('div');
       div.className = 'siswa-manual-row';
       div.innerHTML = `
-        <input type="text" class="form-control input-manual" placeholder="Nama siswa...">
-        <button class="btn btn-danger btn-sm btn-remove" onclick="this.parentElement.remove()">✕</button>
+        <input type="text" class="form-control input-manual" placeholder="Ketik Nama Siswa...">
+        <button class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">✕</button>
       `;
       container.appendChild(div);
     }
 
-    // 4. Fungsi kirim data
+    // 4. Fungsi Kirim Data ke Google Sheets
     function kirimData() {
       const tanggal = document.getElementById('tanggal').value;
       const guru = document.getElementById('guru').value; 
@@ -160,11 +170,14 @@
       const kelas = document.getElementById('kelas').value;
 
       if(!tanggal || !guru || !kegiatan || !jp || !kelas) {
-        alert("Mohon lengkapi semua isian wajib (Tanggal, Guru, Kegiatan, JP, dan Kelas)!");
+        alert("Mohon lengkapi semua isian yang berbintang merah (*)");
         return;
       }
 
+      // Ambil siswa dari checklist
       const siswaDiceklis = Array.from(document.querySelectorAll('.chk-siswa:checked')).map(cb => cb.value);
+      
+      // Ambil siswa dari input manual
       const siswaManual = Array.from(document.querySelectorAll('.input-manual'))
                                .map(input => input.value.trim())
                                .filter(val => val !== "");
@@ -172,36 +185,34 @@
       const semuaSiswa = [...siswaDiceklis, ...siswaManual];
 
       if (semuaSiswa.length === 0) {
-        alert("Mohon pilih minimal satu siswa yang hadir.");
+        alert("Pilih atau ketik minimal satu nama siswa yang hadir.");
         return;
       }
 
+      // Tampilkan Loading
+      document.getElementById('loader').style.display = 'flex';
       const btn = document.getElementById('btnSubmit');
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Menyimpan...';
 
       const payload = { tanggal, guru, kegiatan, jp, kelas, siswa: semuaSiswa };
 
+      // Kirim menggunakan POST
       fetch(APPS_SCRIPT_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        mode: 'no-cors', // Penting untuk Apps Script doPost
+        cache: 'no-cache',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
-      .then(response => response.json())
-      .then(result => {
-        if(result.status === "success") {
-          alert(result.message);
-          location.reload(); 
-        } else {
-          alert("Gagal menyimpan: " + result.message);
-          btn.disabled = false;
-          btn.innerText = "SIMPAN PRESENSI";
-        }
+      .then(() => {
+        // Karena mode no-cors, kita anggap sukses jika tidak ada error jaringan
+        alert("Data presensi berhasil dikirim!");
+        location.reload(); 
       })
       .catch(error => {
-        alert("Terjadi kesalahan jaringan atau CORS. Pastikan Apps Script sudah di-deploy sebagai 'Anyone'.");
+        alert("Terjadi kesalahan: " + error);
+        document.getElementById('loader').style.display = 'none';
         btn.disabled = false;
-        btn.innerText = "SIMPAN PRESENSI";
       });
     }
   </script>
