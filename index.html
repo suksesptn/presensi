@@ -13,6 +13,7 @@
     .checkbox-container { max-height: 250px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px; background: #fff; }
     .form-check { margin-bottom: 8px; }
     .siswa-manual-row { display: flex; gap: 8px; margin-top: 10px; }
+    .btn-remove { border-radius: 8px; }
   </style>
 </head>
 <body>
@@ -52,7 +53,6 @@
 
       <hr class="my-4">
       
-      <!-- DROPDOWN KELAS -->
       <div class="mb-3">
         <label for="kelas">Pilih Kelas <span class="text-danger">*</span></label>
         <select id="kelas" class="form-select" onchange="tampilkanSiswa()" required>
@@ -60,27 +60,23 @@
         </select>
       </div>
 
-      <!-- CHECKBOX SISWA -->
       <label>Daftar Siswa (Ceklis yang hadir) <span class="text-danger">*</span></label>
       <div id="container-siswa" class="checkbox-container mb-3 text-muted">
         <em>Silakan pilih kelas terlebih dahulu...</em>
       </div>
       
-      <!-- TAMBAH SISWA MANUAL -->
       <label>Tambah Siswa Manual (Opsional)</label>
-      <small class="d-block text-muted mb-2">Gunakan jika ada siswa yang ikut tapi tidak ada di daftar kelas atas.</small>
-      <div id="container-manual"></div>
-      <button class="btn btn-outline-secondary btn-sm w-100" onclick="tambahBarisManual()">+ Tambah Siswa Manual</button>
+      <small class="d-block text-muted mb-2">Gunakan jika ada siswa yang hadir tapi tidak ada di daftar kelas.</small>
+      <div id="container-manual" class="mb-2"></div>
+      <button class="btn btn-outline-primary btn-sm w-100" onclick="tambahBarisManual()">+ Tambah Siswa Manual</button>
 
       <button class="btn btn-success w-100 mt-4 py-2" onclick="kirimData()" id="btnSubmit">SIMPAN PRESENSI</button>
     </div>
   </div>
 
   <script>
-    // GANTI DENGAN URL WEB APP ANDA YANG BARU NANTI
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyagt6DQyCqE9LXCzyB-FCIlAvXEp_d8TJsmzFgTO1SfT342g0usxlNY7uuB9haYWc0/exec";
     
-    // Variabel global untuk menyimpan data dari Google Sheet
     let dataMasterSiswa = {}; 
 
     document.getElementById('tanggal').valueAsDate = new Date();
@@ -89,32 +85,32 @@
     fetch(APPS_SCRIPT_URL)
       .then(response => response.json())
       .then(data => {
-        // Asumsi data JSON dari GAS bentuknya:
-        // { guru: ["Guru A", "Guru B"], kelas: ["XII MIPA 1", "XII MIPA 2"], siswa: { "XII MIPA 1": ["Andi", "Budi"], "XII MIPA 2": ["Cici"] } }
-        
         // Isi dropdown Guru
         const guruSelect = document.getElementById('guru');
-        if(data.guru) {
+        if(data.guru && data.guru.length > 0) {
           guruSelect.innerHTML = '<option value="" disabled selected>Pilih nama guru...</option>';
           data.guru.forEach(g => guruSelect.innerHTML += `<option value="${g}">${g}</option>`);
+        } else {
+          guruSelect.innerHTML = '<option value="" disabled selected>Data guru tidak ditemukan</option>';
         }
 
         // Isi dropdown Kelas
         const kelasSelect = document.getElementById('kelas');
-        if(data.kelas) {
+        if(data.kelas && data.kelas.length > 0) {
           kelasSelect.innerHTML = '<option value="" disabled selected>Pilih kelas...</option>';
           data.kelas.forEach(k => kelasSelect.innerHTML += `<option value="${k}">${k}</option>`);
+        } else {
+          kelasSelect.innerHTML = '<option value="" disabled selected>Data kelas tidak ditemukan</option>';
         }
 
-        // Simpan data master siswa per kelas ke variabel global
         if(data.siswa) {
           dataMasterSiswa = data.siswa;
         }
       })
       .catch(error => {
         console.error('Gagal memuat data:', error);
-        document.getElementById('guru').innerHTML = '<option value="" disabled selected>Gagal memuat koneksi</option>';
-        document.getElementById('kelas').innerHTML = '<option value="" disabled selected>Gagal memuat koneksi</option>';
+        document.getElementById('guru').innerHTML = '<option value="" disabled selected>Kesalahan Koneksi</option>';
+        document.getElementById('kelas').innerHTML = '<option value="" disabled selected>Kesalahan Koneksi</option>';
       });
 
     // 2. Fungsi memunculkan checkbox siswa berdasarkan kelas yang dipilih
@@ -122,7 +118,7 @@
       const kelasDipilih = document.getElementById('kelas').value;
       const containerSiswa = document.getElementById('container-siswa');
       
-      containerSiswa.innerHTML = ''; // Kosongkan container
+      containerSiswa.innerHTML = '';
       containerSiswa.classList.remove('text-muted');
 
       const daftarSiswa = dataMasterSiswa[kelasDipilih] || [];
@@ -132,7 +128,6 @@
         return;
       }
 
-      // Buat checkbox untuk tiap siswa
       daftarSiswa.forEach((siswa, index) => {
         const idCheckbox = `chk_${index}`;
         containerSiswa.innerHTML += `
@@ -150,8 +145,8 @@
       const div = document.createElement('div');
       div.className = 'siswa-manual-row';
       div.innerHTML = `
-        <input type="text" class="form-control input-manual" placeholder="Ketik nama siswa...">
-        <button class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">✕</button>
+        <input type="text" class="form-control input-manual" placeholder="Nama siswa...">
+        <button class="btn btn-danger btn-sm btn-remove" onclick="this.parentElement.remove()">✕</button>
       `;
       container.appendChild(div);
     }
@@ -165,23 +160,19 @@
       const kelas = document.getElementById('kelas').value;
 
       if(!tanggal || !guru || !kegiatan || !jp || !kelas) {
-        alert("Mohon lengkapi semua isian (Tanggal, Guru, Kegiatan, JP, dan Kelas)!");
+        alert("Mohon lengkapi semua isian wajib (Tanggal, Guru, Kegiatan, JP, dan Kelas)!");
         return;
       }
 
-      // Ambil siswa yang diceklis
       const siswaDiceklis = Array.from(document.querySelectorAll('.chk-siswa:checked')).map(cb => cb.value);
-      
-      // Ambil siswa yang diketik manual
       const siswaManual = Array.from(document.querySelectorAll('.input-manual'))
                                .map(input => input.value.trim())
                                .filter(val => val !== "");
 
-      // Gabungkan semua siswa
       const semuaSiswa = [...siswaDiceklis, ...siswaManual];
 
       if (semuaSiswa.length === 0) {
-        alert("Mohon pilih minimal satu siswa yang hadir, atau ketik di form manual.");
+        alert("Mohon pilih minimal satu siswa yang hadir.");
         return;
       }
 
@@ -208,7 +199,7 @@
         }
       })
       .catch(error => {
-        alert("Terjadi kesalahan jaringan. Coba lagi nanti.");
+        alert("Terjadi kesalahan jaringan atau CORS. Pastikan Apps Script sudah di-deploy sebagai 'Anyone'.");
         btn.disabled = false;
         btn.innerText = "SIMPAN PRESENSI";
       });
